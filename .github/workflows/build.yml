@@ -15,4 +15,5 @@ jobs:
           pio --help
       - name: Build
         run: |
-          pio run build
+          pio run -h build
+          pio run -t build

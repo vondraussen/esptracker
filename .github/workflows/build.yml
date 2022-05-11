@@ -19,6 +19,9 @@ jobs:
       - name: Build
         run: pio run
 
+      - name: Unit Tests
+        run: pio test -e native
+
       - name: CPP Check
         run: pio check --skip-packages
 

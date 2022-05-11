@@ -1,4 +1,5 @@
 #include <Arduino.h>
+#include <TaskScheduler.h>
 #include <BluetoothSerial.h>
 // #include <WiFi.h>
 // #include <WiFiClientSecure.h>
@@ -19,6 +20,9 @@ const char wifiSSID[] = WIFI_SSID;
 const char wifiPass[] = WIFI_PASS;
 
 BluetoothSerial SerialBT;
+
+Scheduler ts;
+// Task tConfigure     (TASK_IMMEDIATE, TASK_ONCE, &cell_init, &ts, true);
 
 void cell_init(espTracker* tracker, TinyGsm modem) {
   tracker->name = modem.getModemName();
@@ -92,6 +96,7 @@ void setup() {
   delay(6000);
   Serial2.begin(115200, SERIAL_8N1, RXD2, TXD2);
   Serial.println("going to loop");
+  // ts.startNow();
 }
 
 enum StateMaschineState {
@@ -209,4 +214,5 @@ void loop() {
         break;
     }
   }
+  // ts.execute();
 }

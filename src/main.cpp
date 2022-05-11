@@ -29,9 +29,11 @@ void cell_init(espTracker* tracker, TinyGsm modem) {
   DBG("Modem Info:", tracker->modemInfo);
 
   // Unlock your SIM card with a PIN if needed
-  if (GSM_PIN && modem.getSimStatus() != 3) {
-    modem.simUnlock(GSM_PIN);
-  }
+  #ifdef GSM_PIN
+    if (modem.getSimStatus() != 3) {
+      modem.simUnlock(GSM_PIN);
+    }
+  #endif
 
   DBG("Waiting for network...");
   if (!modem.waitForNetwork()) {
@@ -70,6 +72,7 @@ float readBattery(uint8_t pin) {
   return ((float)analogRead(pin) / 4095.0) * 2.0 * 3.3 * (ADC_VREF);
 }
 
+// cppcheck-suppress unusedFunction
 void setup() {
   modem_pwr_on();
   Serial.begin(230400);
@@ -106,6 +109,7 @@ enum StateMaschineState {
 //   TinyGsmClient* cell;
 // } context_t;
 
+// cppcheck-suppress unusedFunction
 void loop() {
   static uint8_t state = INIT;
   char buf[200];

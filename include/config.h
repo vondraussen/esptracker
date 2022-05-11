@@ -10,7 +10,7 @@ extern "C" {
 #define BATT_ADC 35
 #define LED 12
 #define MODEM_PWR 4
-#define GSM_PIN ""
+// #define GSM_PIN ""
 #define GPS_MSG_INTV_SEC 15
 
 #define ADC_VREF 1100

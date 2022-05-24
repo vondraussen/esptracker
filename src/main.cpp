@@ -1,6 +1,6 @@
 #include <Arduino.h>
-#include <TaskScheduler.h>
-#include <BluetoothSerial.h>
+// #include <TaskScheduler.h>
+// #include <BluetoothSerial.h>
 // #include <WiFi.h>
 // #include <WiFiClientSecure.h>
 #include "SPIFFS.h"
@@ -13,38 +13,44 @@
 const char wifiSSID[] = WIFI_SSID;
 const char wifiPass[] = WIFI_PASS;
 
-BluetoothSerial SerialBT;
+// BluetoothSerial SerialBT;
 
 Tracker tracker;
 
-Scheduler ts;
+// Scheduler ts;
 // Task tConfigure     (TASK_IMMEDIATE, TASK_ONCE, &cell_init, &ts, true);
 
 // for bluetooth serial
-void callback(esp_spp_cb_event_t event, esp_spp_cb_param_t* param) {
-  if (event == ESP_SPP_SRV_OPEN_EVT) {
-    Serial.println("Client Connected");
-  }
-}
+// void callback(esp_spp_cb_event_t event, esp_spp_cb_param_t* param) {
+//   if (event == ESP_SPP_SRV_OPEN_EVT) {
+//     Serial.println("Client Connected");
+//   }
+// }
 
 // cppcheck-suppress unusedFunction
 void setup() {
+  Serial.begin(115200);
+  Serial.println("initialized");
+
   tracker.modem_pwr_on();
-  Serial.begin(230400);
+  tracker.led_off();
 
   if (!SPIFFS.begin()) {
     Serial.println("An Error has occurred while mounting SPIFFS");
   }
 
-  SerialBT.register_callback(callback);
-  if (!SerialBT.begin("ESP32")) {
-    Serial.println("An error occurred initializing Bluetooth");
-  } else {
-    Serial.println("Bluetooth initialized");
-  }
+  // SerialBT.register_callback(callback);
+  // if (!SerialBT.begin("ESP32")) {
+  //   Serial.println("An error occurred initializing Bluetooth");
+  // } else {
+  //   Serial.println("Bluetooth initialized");
+  // }
 
   Serial.println("Waiting for connections...");
-  delay(6000);
+  delay(1000);
+  Serial.println(tracker.modem.getModemInfo());
+  Serial.println(tracker.modem.getModemName());
+  Serial.println(tracker.modem.getIMEI());
   Serial.println("going to loop");
   // ts.startNow();
 }

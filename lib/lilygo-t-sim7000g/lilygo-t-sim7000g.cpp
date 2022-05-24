@@ -1,74 +1,60 @@
 #include <lilygo-t-sim7000g.h>
 
 Tracker::Tracker() {
-    this->modem = new TinyGsm(Serial2);
-    this->client = new TinyGsmClient(*this->modem, 0);
-
-    DBG("Initializing modem...");
-    while (!this->modem->init()) { // TODO(vondraussen) add timeout here and do a reset
-        DBG("Failed to restart modem, delaying 10s and retrying");
-        delay(10000);
-    }
-    return;
-}
-
-Tracker::~Tracker() {
-    delete this->client;
-    delete this->modem;
-    return;
+  pinMode(BAT_ADC_PIN, INPUT);
+  pinMode(SOLAR_ADC_PIN, INPUT);
+  DBG("Initializing modem...");
+  modem_pwr_on();
+  return;
 }
 
 void Tracker::gps_enable() {
-    this->modem->sendAT(ACTIVATE_GPS_ANT_POWER);
-    this->modem->waitResponse();
-    this->modem->enableGPS();
-    this->modem->sendAT("+CGNSHOT");
-    this->modem->waitResponse();
+  modem.sendAT(ACTIVATE_GPS_ANT_POWER);
+  modem.waitResponse();
+  modem.enableGPS();
+  modem.sendAT("+CGNSHOT");
+  modem.waitResponse();
+  delay(1000);
 }
 
 void Tracker::gps_disable() {
-    this->modem->disableGPS();
-    this->modem->sendAT(DEACTIVATE_GPS_ANT_POWER);
-    this->modem->waitResponse();
+    this->modem.disableGPS();
+    this->modem.sendAT(DEACTIVATE_GPS_ANT_POWER);
+    this->modem.waitResponse();
 }
 
-void Tracker::cell_connect() {
-  this->name = this->modem->getModemName();
-  this->imei = this->modem->getIMEI();
-  this->modemInfo = this->modem->getModemInfo();
-
-  DBG("Modem Name:", this->name);
+bool Tracker::cell_connect() {
+  DBG("Modem Name:", this->modemName);
   DBG("Modem Info:", this->modemInfo);
 
   DBG("Waiting for network...");
-  if (!this->modem->waitForNetwork()) {
+  if (!this->modem.waitForNetwork()) {
     DBG("Failed to connect network, will try again");
-    delay(10000);
-    return;
+    return false;
   }
 
-  if (this->modem->isNetworkConnected()) {
+  if (this->modem.isNetworkConnected()) {
     DBG("Network connected");
   }
 
   DBG("Connecting to", APN);
-  if (!this->modem->gprsConnect(APN, "", "")) {
-    delay(10000);
-    return;
+  if (!this->modem.gprsConnect(APN, "", "")) {
+    return false;
   }
 
-  bool res = this->modem->isGprsConnected();
-  this->csq = this->modem->getSignalQuality();
+  bool res = this->modem.isGprsConnected();
+  this->csq = this->modem.getSignalQuality();
 
   DBG("GPRS status:", res ? "connected" : "not connected");
   DBG("IMEI:", this->imei);
   DBG("Signal quality:", this->csq);
+  return res;
 }
 
 void Tracker::gprs_connect() {
     DBG("GPRS_CONNECT");
     DBG("Connecting to ", SERVER, SERVER_PORT);
-    if (!this->client->connect(SERVER, SERVER_PORT)) {
+    if (!this->client.connect(SERVER, SERVER_PORT)) {
         DBG("... failed");
         // delay and retry
         // break;
@@ -77,14 +63,14 @@ void Tracker::gprs_connect() {
 }
 
 bool Tracker::is_data_connected() {
-    return this->client->connected();
+    return this->client.connected();
 }
 
 void Tracker::get_gps_data() {
     char buf[200];
     float fspeed, falt, facc = 0;
 
-    bool gotPos = this->modem->getGPS(
+    bool gotPos = this->modem.getGPS(
         &this->gps.lat,
         &this->gps.lon,
         &fspeed,
@@ -102,20 +88,32 @@ void Tracker::get_gps_data() {
     this->gps.alt = (uint16_t)falt;
     this->gps.acc = (uint8_t)(facc * 10);
 
-    this->gpsRaw = this->modem->getGPSraw();
+    this->gpsRaw = this->modem.getGPSraw();
     sprintf(buf, "%.7f,%.7f acc:%d bat:%f - %s", this->gps.lat,
             this->gps.lon, this->gps.acc, this->get_battery_mv(),
             this->gpsRaw.c_str());
     // SerialBT.println(buf);
+    message = buf;
     DBG(buf);
 }
 
 void Tracker::send_gps_raw() {
-  this->client->print(this->imei +','+ this->gpsRaw + "\r\n");
+  this->client.print(this->imei +','+ this->gpsRaw + "\r\n");
 }
 
-float Tracker::get_battery_mv() {
-  return ((float)analogRead(BAT_ADC_PIN) / 4095.0) * 2.0 * 3.3 * (ADC_VREF);
+uint16_t Tracker::get_battery_mv() {
+  // return (analogRead(BAT_ADC_PIN) / 4095) * 2 * 3300 * (ADC_VREF);
+  return (4095 / 4095) * 2 * 3300 * (ADC_VREF);
+}
+
+String Tracker::get_modem_firmware_version() {
+  String res;
+  modem.sendAT(GF("+CGMR"));
+  modem.waitResponse(5000L, res);
+  res.replace(GSM_NL "OK" GSM_NL, "");
+  res.replace("Revision:", "");
+  res.trim();
+  return res;
 }
 
 void Tracker::led_on() {
@@ -131,11 +129,22 @@ void Tracker::led_off() {
 void Tracker::modem_pwr_on() {
   pinMode(MODEM_POWER_PIN, OUTPUT);
   digitalWrite(MODEM_POWER_PIN, HIGH);
-  Serial2.begin(MODEM_BAUD_RATE, SERIAL_8N1, MODEM_RX_PIN, MODEM_TX_PIN);
+  delay(10);
+  digitalWrite(MODEM_POWER_PIN, LOW);
+  delay(1500);
+  digitalWrite(MODEM_POWER_PIN, HIGH);
+  delay(4600);
+
+  serialAt.begin(MODEM_BAUD_RATE, SERIAL_8N1, MODEM_RX_PIN, MODEM_TX_PIN);
+
+  // be sure, that a SIM is inserted or this will block forever!
+  while(!modem.init()) {
+    Serial.println("Failed to init modem, retrying...");
+  }
 }
 
 void Tracker::modem_pwr_off() {
   pinMode(MODEM_POWER_PIN, OUTPUT);
   digitalWrite(MODEM_POWER_PIN, LOW);
-  Serial2.end();
+  serialAt.end();
 }

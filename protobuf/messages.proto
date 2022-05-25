@@ -1,0 +1,46 @@
+syntax = "proto3";
+import public "google.protobuf.proto";
+
+// ChaCha20_Poly1305
+message EncryptedMessage {
+    bytes nonce = 1;
+    bytes header = 2;
+    bytes ciphertext = 3;
+    bytes tag = 4;
+}
+
+message EspTrackerMessage {
+    uint64 id = 1; // imei
+    enum TrackerType {
+        UNKNOWN = 0;
+        CAR = 1;
+        BIKE = 2;
+    }
+    TrackerType type = 2;
+    Position position = 3;
+}
+
+message Position {
+    uint32 fix_type = 1;
+    Timestamp pos_time = 2;
+
+    double latitude = 3;
+    double longitude = 4;
+    uint32 course = 5;
+    int32 altitude = 6;
+    int32 speed = 7;
+
+    float hdop = 8;
+    float pdop = 9;
+    float vdop = 10;
+
+    uint32 gps_sats_in_view = 11;
+    uint32 gps_sats_in_use = 12;
+    uint32 glo_sats_in_use = 13;
+    uint32 glo_sats_in_view = 14;
+    uint32 glo_sats_in_view = 15;
+
+    uint32 c_n0_max = 16;
+    float hpa = 17;
+    float vpa = 18;
+}
